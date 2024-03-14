@@ -1,10 +1,15 @@
 #include "mongoose.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
+
+
+#define LED_GPIO_PIN 2  // Assuming the built-in LED is connected to GPIO 2
 
 static const char *TAG = "MQTT_CLIENT";
 static const char *s_mqtt_broker = "mqtt://192.168.4.1:1883";
 static const char *specific_topic = "lightshow";
 static bool mqtt_connected = false;
+
 
 
 static void mqtt_event_handler(struct mg_connection *c, int ev, void *ev_data) {
@@ -37,6 +42,14 @@ static void mqtt_event_handler(struct mg_connection *c, int ev, void *ev_data) {
     } else if (ev == MG_EV_MQTT_MSG) {
         struct mg_mqtt_message *msg = (struct mg_mqtt_message *)ev_data;
         ESP_LOGI(TAG, "Received MQTT message on topic %.*s: %.*s", (int)msg->topic.len, msg->topic.ptr, (int)msg->data.len, msg->data.ptr);
+
+            // Blink the LED three times
+            for (int i = 0; i < 3; i++) {
+                gpio_set_level(LED_GPIO_PIN, 1);  // Turn on the LED
+                vTaskDelay(pdMS_TO_TICKS(500));   // Wait for 500 ms
+                gpio_set_level(LED_GPIO_PIN, 0);  // Turn off the LED
+                vTaskDelay(pdMS_TO_TICKS(500));   // Wait for 500 ms
+            }        
     } else if (ev == MG_EV_CLOSE) {
         ESP_LOGI(TAG, "MQTT connection closed");
         mqtt_connected = false;
@@ -46,6 +59,9 @@ static void mqtt_event_handler(struct mg_connection *c, int ev, void *ev_data) {
 void mqtt_client_init(void) {
     struct mg_mgr mgr;
     mg_mgr_init(&mgr);
+
+    gpio_reset_pin(LED_GPIO_PIN);
+    gpio_set_direction(LED_GPIO_PIN, GPIO_MODE_OUTPUT);
 
     struct mg_connection *c = NULL;
     int retry_count = 0;
