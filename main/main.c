@@ -16,7 +16,6 @@ void app_main(void) {
     wifi_init_sta();
 
 
+    // Initialize MQTT client
     mqtt_client_init();
-
-
 }
